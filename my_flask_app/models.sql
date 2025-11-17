@@ -1,13 +1,13 @@
-CREATE TABLE IF NOT EXISTS users (
+CREATE TABLE IF NOT EXISTS real_estate (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE,
-    password TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS news_logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    query TEXT,
-    result TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    district TEXT,
+    dong TEXT,
+    building_name TEXT,
+    building_type TEXT,
+    area REAL,
+    deposit INTEGER,
+    rent INTEGER,
+    floor INTEGER,
+    built_year INTEGER,
+    contract_date TEXT
 );
