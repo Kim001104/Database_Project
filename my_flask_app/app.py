@@ -3,8 +3,7 @@ from database import get_db, init_db
 
 app = Flask(__name__)
 
-@app.before_first_request
-def initialize():
+with app.app_context():
     init_db()
 
 @app.route("/")
