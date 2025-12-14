@@ -1,3 +1,4 @@
+-- original.json 파일에서 필요한 요소만 추출하여 테이블 만들기
 CREATE TABLE IF NOT EXISTS real_estate (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     district TEXT,
