@@ -68,24 +68,27 @@ def dongs():
 def avg_stats():
     district = request.args.get("district")
     dong = request.args.get("dong")
+    building_type = request.args.get("building_type")
 
-    if not district or not dong:
+    if not district or not dong or not building_type:
         return jsonify({})
 
     db = get_db()
     row = db.execute("""
         SELECT
             AVG(rent) AS avg_rent,
-            AVG(deposit) AS avg_deposit
+            AVG(deposit) AS avg_deposit,
+            COUNT(*) AS total_count
         FROM real_estate
         WHERE district = ?
           AND dong = ?
-          AND rent IS NOT NULL
-    """, (district, dong)).fetchone()
+          AND building_type = ?
+    """, (district, dong, building_type)).fetchone()
 
     return jsonify({
         "avg_rent": round(row["avg_rent"], 1) if row["avg_rent"] else None,
-        "avg_deposit": round(row["avg_deposit"], 1) if row["avg_deposit"] else None
+        "avg_deposit": round(row["avg_deposit"], 1) if row["avg_deposit"] else None,
+        "total_count": row["total_count"]
     })
 
 # 건물 유형별 비율 API 
@@ -114,6 +117,42 @@ def building_type_stats():
         "labels": [r["building_type"] for r in rows],
         "values": [r["cnt"] for r in rows]
     })
+
+# 자치구, 동, 건물 유형에 대한 조회 데이터
+@app.route("/api/contracts")
+def contracts():
+    district = request.args.get("district")
+    dong = request.args.get("dong")
+    building_type = request.args.get("building_type")
+
+    if not district or not dong or not building_type:
+        return jsonify([])
+
+    db = get_db()
+    rows = db.execute("""
+        SELECT
+            area,
+            rent,
+            deposit,
+            contract_date
+        FROM real_estate
+        WHERE district = ?
+          AND dong = ?
+          AND building_type = ?
+        ORDER BY rent ASC
+        LIMIT 500
+    """, (district, dong, building_type)).fetchall()
+
+    return jsonify([
+        {
+            "area": r["area"],
+            "rent": r["rent"],
+            "deposit": r["deposit"],
+            "contract_date": r["contract_date"]
+        }
+        for r in rows
+    ])
+
 
 
 if __name__ == "__main__":
