@@ -1,11 +1,48 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <title>Flask Web</title>
-        <link rel="stylesheet" href="../static/style.css">
-    </head>
-
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>부동산 인사이트</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
 <body>
-    <h1>테스트 페이지</h1>
+
+<h2>📊 자치구별 평균 월세</h2>
+
+<button onclick="loadAvgRent()">그래프 보기</button>
+
+<canvas id="avgRentChart" width="600" height="400"></canvas>
+
+<script>
+let chart = null;
+
+function loadAvgRent() {
+    fetch("/api/avg-rent")
+        .then(res => res.json())
+        .then(data => {
+            drawChart(data.labels, data.values);
+        });
+}
+
+function drawChart(labels, values) {
+    const ctx = document.getElementById("avgRentChart").getContext("2d");
+
+    if (chart) {
+        chart.destroy(); // 중복 생성 방지
+    }
+
+    chart = new Chart(ctx, {
+        type: "bar",
+        data: {
+            labels: labels,
+            datasets: [{
+                label: "평균 월세 (만원)",
+                data: values
+            }]
+        }
+    });
+}
+</script>
+
 </body>
 </html>
