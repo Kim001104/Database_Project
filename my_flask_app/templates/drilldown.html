@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>Drill-down 분석</title>
+</head>
+<body>
+  <h2>Step 1: 자치구 → 동 목록 동적 로딩</h2>
+
+  <div style="margin-bottom: 12px;">
+    <label>자치구: </label>
+    <select id="districtSelect"></select>
+  </div>
+
+  <div style="margin-bottom: 12px;">
+    <label>동: </label>
+    <select id="dongSelect">
+      <option>자치구를 먼저 선택하세요</option>
+    </select>
+  </div>
+
+  <div style="margin-top: 16px;">
+    <h3>선택한 동의 평균 지표</h3>
+    <p>평균 월세: <span id="avgRent">-</span> 만원</p>
+    <p>평균 보증금: <span id="avgDeposit">-</span> 만원</p>
+  </div>
+
+  <div style="margin-top: 24px;">
+    <h3>건물 유형별 비율</h3>
+    <button onclick="loadBuildingType()">건물 유형 보기</button>
+    <canvas id="buildingTypeChart" width="400" height="300"></canvas>
+  </div>
+
+
+  <script>
+    const districtSelect = document.getElementById("districtSelect");
+    const dongSelect = document.getElementById("dongSelect");
+
+    // 1) 페이지 로딩 시 자치구 목록 불러오기
+    fetch("/api/districts")
+      .then(res => res.json())
+      .then(districts => {
+        districtSelect.innerHTML = "";
+        districts.forEach(d => {
+          const opt = document.createElement("option");
+          opt.value = d;
+          opt.textContent = d;
+          districtSelect.appendChild(opt);
+        });
+
+        // 첫 자치구 기준으로 동 목록 자동 로딩
+        if (districts.length > 0) {
+          loadDongs(districts[0]);
+        }
+      });
+
+    // 2) 자치구 선택 바뀌면 동 목록 다시 로딩
+    districtSelect.addEventListener("change", () => {
+      loadDongs(districtSelect.value);
+    });
+
+    function loadDongs(district) {
+      dongSelect.innerHTML = "<option>불러오는 중...</option>";
+
+      fetch(`/api/dongs?district=${encodeURIComponent(district)}`)
+        .then(res => res.json())
+        .then(dongs => {
+          dongSelect.innerHTML = "";
+          dongs.forEach(d => {
+            const opt = document.createElement("option");
+            opt.value = d;
+            opt.textContent = d;
+            dongSelect.appendChild(opt);
+          });
+
+          if (dongs.length === 0) {
+            dongSelect.innerHTML = "<option>해당 자치구에 동 데이터 없음</option>";
+          }
+        });
+    }
+
+    const avgRentSpan = document.getElementById("avgRent");
+    const avgDepositSpan = document.getElementById("avgDeposit");
+
+    dongSelect.addEventListener("change", () => {
+      const district = districtSelect.value;
+      const dong = dongSelect.value;
+
+      fetch(`/api/stats/avg?district=${encodeURIComponent(district)}&dong=${encodeURIComponent(dong)}`)
+        .then(res => res.json())
+        .then(data => {
+          avgRentSpan.textContent = data.avg_rent ?? "-";
+          avgDepositSpan.textContent = data.avg_deposit ?? "-";
+        });
+    });
+
+  </script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  let buildingChart = null;
+
+  function loadBuildingType() {
+    const district = districtSelect.value;
+    const dong = dongSelect.value;
+
+    fetch(`/api/stats/building-type?district=${encodeURIComponent(district)}&dong=${encodeURIComponent(dong)}`)
+      .then(res => res.json())
+      .then(data => {
+        drawBuildingTypeChart(data.labels, data.values);
+      });
+  }
+
+  function drawBuildingTypeChart(labels, values) {
+    const ctx = document.getElementById("buildingTypeChart").getContext("2d");
+
+    if (buildingChart) {
+      buildingChart.destroy();
+    }
+
+    buildingChart = new Chart(ctx, {
+      type: "pie",
+      data: {
+        labels: labels,
+        datasets: [{
+          data: values
+        }]
+      }
+    });
+  }
+</script>
+
+</body>
+</html>
