@@ -63,18 +63,19 @@ def dongs():
 
     return jsonify([r["dong"] for r in rows])
 
-# 평균 월세 / 보증금 API 추가
 @app.route("/api/stats/avg")
 def avg_stats():
     district = request.args.get("district")
     dong = request.args.get("dong")
     building_type = request.args.get("building_type")
 
+    min_area = request.args.get("min_area")  # ㎡
+    max_area = request.args.get("max_area")  # ㎡
+
     if not district or not dong or not building_type:
         return jsonify({})
 
-    db = get_db()
-    row = db.execute("""
+    query = """
         SELECT
             AVG(rent) AS avg_rent,
             AVG(deposit) AS avg_deposit,
@@ -83,13 +84,26 @@ def avg_stats():
         WHERE district = ?
           AND dong = ?
           AND building_type = ?
-    """, (district, dong, building_type)).fetchone()
+    """
+    params = [district, dong, building_type]
+
+    if min_area:
+        query += " AND area >= ?"
+        params.append(float(min_area))
+
+    if max_area:
+        query += " AND area <= ?"
+        params.append(float(max_area))
+
+    db = get_db()
+    row = db.execute(query, params).fetchone()
 
     return jsonify({
         "avg_rent": round(row["avg_rent"], 1) if row["avg_rent"] else None,
         "avg_deposit": round(row["avg_deposit"], 1) if row["avg_deposit"] else None,
         "total_count": row["total_count"]
     })
+
 
 # 건물 유형별 비율 API 
 @app.route("/api/stats/building-type")

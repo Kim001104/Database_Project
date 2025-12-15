@@ -11,20 +11,19 @@
 <!-- ===================== -->
 <!-- 선택 영역 -->
 <!-- ===================== -->
-
-<div style="margin-bottom: 12px;">
+<div>
   <label>자치구: </label>
   <select id="districtSelect"></select>
 </div>
 
-<div style="margin-bottom: 12px;">
+<div>
   <label>동: </label>
   <select id="dongSelect">
     <option>자치구를 먼저 선택하세요</option>
   </select>
 </div>
 
-<div style="margin-bottom: 12px;">
+<div>
   <label>건물 유형: </label>
   <select id="buildingTypeSelect">
     <option>동을 선택하세요</option>
@@ -34,240 +33,187 @@
 <!-- ===================== -->
 <!-- 평균 지표 -->
 <!-- ===================== -->
-
-<div style="margin-top: 16px;">
+<div style="margin-top:16px;">
   <h3>선택한 자치구·동·건물유형별 평균 지표</h3>
   <p>평균 월세: <span id="avgRent">-</span> 만원</p>
   <p>평균 보증금: <span id="avgDeposit">-</span> 만원</p>
-  <p>총 계약 수 : <span id="totalCount">-</span> 건</p>
+  <p>총 계약 수: <span id="totalCount">-</span> 건</p>
 </div>
 
 <!-- ===================== -->
 <!-- 평수 필터 -->
 <!-- ===================== -->
-<div style="margin-top: 16px; margin-bottom: 12px;">
+<div style="margin-top:12px;">
   <label>평수 범위: </label>
   <input type="number" id="minPyung" placeholder="최소" style="width:80px;"> ~
   <input type="number" id="maxPyung" placeholder="최대" style="width:80px;">
   <span>(평)</span>
 </div>
 
-
 <!-- ===================== -->
 <!-- 계약 조회 -->
 <!-- ===================== -->
-
-<div style="margin-top: 24px;">
+<div style="margin-top:16px;">
   <button onclick="loadContracts()">📄 계약 데이터 조회</button>
 </div>
 
 <div style="margin-top:16px;">
   <h3>계약 상세 데이터</h3>
-
-  <div style="max-height:300px; overflow-y:auto; width:100%; border:1px solid #999;">
-    <table style="width:100%; border-collapse:collapse; text-align:center;">
+  <div style="max-height:300px; overflow-y:auto; border:1px solid #999;">
+    <table style="width:100%; text-align:center; border-collapse:collapse;">
       <thead style="position:sticky; top:0; background:#eee;">
         <tr>
-          <th style="width:60px;">No</th>
-          <th style="width:120px;">면적 (㎡)</th>
-          <th style="width:120px;">월세 (만원)</th>
-          <th style="width:140px;">보증금 (만원)</th>
-          <th style="width:140px;">계약일자</th>
+          <th>No</th>
+          <th>면적 (㎡)</th>
+          <th>월세</th>
+          <th>보증금</th>
+          <th>계약일자</th>
         </tr>
       </thead>
       <tbody id="contractTableBody">
-        <tr>
-          <td colspan="5">조회 버튼을 눌러주세요</td>
-        </tr>
+        <tr><td colspan="5">조회 버튼을 눌러주세요</td></tr>
       </tbody>
     </table>
   </div>
 </div>
 
-
-<!-- ===================== -->
-<!-- 건물 유형 비율 -->
-<!-- ===================== -->
-
-<div style="margin-top: 24px;">
-  <h3>건물 유형별 비율</h3>
-  <button onclick="loadBuildingType()">건물 유형 보기</button>
-  <br><br>
-  <canvas id="buildingTypeChart" width="400" height="300"></canvas>
-</div>
-
-<!-- ===================== -->
-<!-- Chart.js -->
-<!-- ===================== -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<!-- ===================== -->
-<!-- 모든 JS 로직 -->
-<!-- ===================== -->
 <script>
-  const districtSelect = document.getElementById("districtSelect");
-  const dongSelect = document.getElementById("dongSelect");
-  const buildingTypeSelect = document.getElementById("buildingTypeSelect");
+const districtSelect = document.getElementById("districtSelect");
+const dongSelect = document.getElementById("dongSelect");
+const buildingTypeSelect = document.getElementById("buildingTypeSelect");
 
-  const avgRentSpan = document.getElementById("avgRent");
-  const avgDepositSpan = document.getElementById("avgDeposit");
-  const contractTableBody = document.getElementById("contractTableBody");
-  const totalCountSpan = document.getElementById("totalCount");
+const avgRentSpan = document.getElementById("avgRent");
+const avgDepositSpan = document.getElementById("avgDeposit");
+const totalCountSpan = document.getElementById("totalCount");
+const contractTableBody = document.getElementById("contractTableBody");
 
-  let buildingChart = null;
+function pyungToArea(pyung) {
+  return pyung * 3.3058;
+}
 
-  function pyungToArea(pyung) {
-    return pyung * 3.3058;
-  }
+/* =====================
+   평균 지표 로딩 (핵심)
+===================== */
+function loadAvgStats() {
+  const district = districtSelect.value;
+  const dong = dongSelect.value;
+  const buildingType = buildingTypeSelect.value;
 
+  if (!district || !dong || !buildingType) return;
 
-  /* =====================
-     초기 로딩: 자치구
-  ===================== */
-  fetch("/api/districts")
+  const minPyung = document.getElementById("minPyung").value;
+  const maxPyung = document.getElementById("maxPyung").value;
+
+  let url = `/api/stats/avg?district=${encodeURIComponent(district)}`
+          + `&dong=${encodeURIComponent(dong)}`
+          + `&building_type=${encodeURIComponent(buildingType)}`;
+
+  if (minPyung) url += `&min_area=${pyungToArea(Number(minPyung))}`;
+  if (maxPyung) url += `&max_area=${pyungToArea(Number(maxPyung))}`;
+
+  fetch(url)
     .then(res => res.json())
-    .then(districts => {
-      districtSelect.innerHTML = "";
-      districts.forEach(d => {
+    .then(data => {
+      avgRentSpan.textContent = data.avg_rent ?? "-";
+      avgDepositSpan.textContent = data.avg_deposit ?? "-";
+      totalCountSpan.textContent = data.total_count ?? "-";
+    });
+}
+
+/* =====================
+   초기 로딩
+===================== */
+fetch("/api/districts")
+  .then(res => res.json())
+  .then(list => {
+    districtSelect.innerHTML = "";
+    list.forEach(d => {
+      const opt = document.createElement("option");
+      opt.value = d;
+      opt.textContent = d;
+      districtSelect.appendChild(opt);
+    });
+    if (list.length) loadDongs(list[0]);
+  });
+
+function loadDongs(district) {
+  fetch(`/api/dongs?district=${encodeURIComponent(district)}`)
+    .then(res => res.json())
+    .then(list => {
+      dongSelect.innerHTML = "";
+      list.forEach(d => {
         const opt = document.createElement("option");
         opt.value = d;
         opt.textContent = d;
-        districtSelect.appendChild(opt);
+        dongSelect.appendChild(opt);
       });
-
-      if (districts.length > 0) {
-        loadDongs(districts[0]);
-      }
     });
+}
 
-  /* =====================
-     자치구 → 동
-  ===================== */
-  districtSelect.addEventListener("change", () => {
-    loadDongs(districtSelect.value);
-  });
+districtSelect.addEventListener("change", () => loadDongs(districtSelect.value));
 
-  function loadDongs(district) {
-    dongSelect.innerHTML = "<option>불러오는 중...</option>";
-    buildingTypeSelect.innerHTML = "<option>동을 선택하세요</option>";
-
-    fetch(`/api/dongs?district=${encodeURIComponent(district)}`)
-      .then(res => res.json())
-      .then(dongs => {
-        dongSelect.innerHTML = "";
-        dongs.forEach(d => {
-          const opt = document.createElement("option");
-          opt.value = d;
-          opt.textContent = d;
-          dongSelect.appendChild(opt);
-        });
+dongSelect.addEventListener("change", () => {
+  fetch(`/api/stats/building-type?district=${districtSelect.value}&dong=${dongSelect.value}`)
+    .then(res => res.json())
+    .then(data => {
+      buildingTypeSelect.innerHTML = "";
+      data.labels.forEach(t => {
+        const opt = document.createElement("option");
+        opt.value = t;
+        opt.textContent = t;
+        buildingTypeSelect.appendChild(opt);
       });
-  }
+    });
+});
 
-  /* =====================
-     동 → 건물 유형 목록
-  ===================== */
-  dongSelect.addEventListener("change", () => {
-    const district = districtSelect.value;
-    const dong = dongSelect.value;
+/* =====================
+   🔥 이벤트 연결 핵심
+===================== */
+buildingTypeSelect.addEventListener("change", loadAvgStats);
+document.getElementById("minPyung").addEventListener("change", loadAvgStats);
+document.getElementById("maxPyung").addEventListener("change", loadAvgStats);
 
-    fetch(`/api/stats/building-type?district=${encodeURIComponent(district)}&dong=${encodeURIComponent(dong)}`)
-      .then(res => res.json())
-      .then(data => {
-        buildingTypeSelect.innerHTML = "";
-        data.labels.forEach(t => {
-          const opt = document.createElement("option");
-          opt.value = t;
-          opt.textContent = t;
-          buildingTypeSelect.appendChild(opt);
-        });
-      });
-  });
+/* =====================
+   계약 조회
+===================== */
+function loadContracts() {
+  loadAvgStats(); // ⭐ 평균과 항상 동기화
 
-  /* =====================
-     건물 유형 선택 → 평균 지표
-  ===================== */
-  buildingTypeSelect.addEventListener("change", () => {
-    const district = districtSelect.value;
-    const dong = dongSelect.value;
-    const buildingType = buildingTypeSelect.value;
+  const district = districtSelect.value;
+  const dong = dongSelect.value;
+  const buildingType = buildingTypeSelect.value;
 
-    fetch(`/api/stats/avg?district=${encodeURIComponent(district)}&dong=${encodeURIComponent(dong)}&building_type=${encodeURIComponent(buildingType)}`)
-      .then(res => res.json())
-      .then(data => {
-        avgRentSpan.textContent = data.avg_rent ?? "-";
-        avgDepositSpan.textContent = data.avg_deposit ?? "-";
-        totalCountSpan.textContent = data.total_count ?? "-";
-      });
-  });
+  const minPyung = document.getElementById("minPyung").value;
+  const maxPyung = document.getElementById("maxPyung").value;
 
-  /* =====================
-     계약 데이터 조회
-  ===================== */
-  function loadContracts() {
-    const district = districtSelect.value;
-    const dong = dongSelect.value;
-    const buildingType = buildingTypeSelect.value;
+  let url = `/api/contracts?district=${district}&dong=${dong}&building_type=${buildingType}`;
+  if (minPyung) url += `&min_area=${pyungToArea(Number(minPyung))}`;
+  if (maxPyung) url += `&max_area=${pyungToArea(Number(maxPyung))}`;
 
-    const minPyung = document.getElementById("minPyung").value;
-    const maxPyung = document.getElementById("maxPyung").value;
+  contractTableBody.innerHTML = "<tr><td colspan='5'>불러오는 중...</td></tr>";
 
-    contractTableBody.innerHTML = "<tr><td colspan='5'>불러오는 중...</td></tr>";
-
-    let url = `/api/contracts?district=${encodeURIComponent(district)}&dong=${encodeURIComponent(dong)}&building_type=${encodeURIComponent(buildingType)}`;
-
-    if (minPyung) url += `&min_area=${encodeURIComponent(pyungToArea(Number(minPyung)))}`;
-    if (maxPyung) url += `&max_area=${encodeURIComponent(pyungToArea(Number(maxPyung)))}`;
-
-    fetch(url)
-      .then(res => res.json())
-      .then(rows => {
-        contractTableBody.innerHTML = "";
-
-        if (rows.length === 0) {
-          contractTableBody.innerHTML = "<tr><td colspan='5'>데이터 없음</td></tr>";
-          return;
-        }
-
-        rows.forEach((r, i) => {
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
+  fetch(url)
+    .then(res => res.json())
+    .then(rows => {
+      contractTableBody.innerHTML = "";
+      if (!rows.length) {
+        contractTableBody.innerHTML = "<tr><td colspan='5'>데이터 없음</td></tr>";
+        return;
+      }
+      rows.forEach((r, i) => {
+        contractTableBody.innerHTML += `
+          <tr>
             <td>${i + 1}</td>
-            <td>${r.area ?? "-"}</td>
-            <td>${r.rent ?? "-"}</td>
-            <td>${r.deposit ?? "-"}</td>
-            <td>${r.contract_date ?? "-"}</td>
-          `;
-          contractTableBody.appendChild(tr);
-        });
+            <td>${r.area}</td>
+            <td>${r.rent}</td>
+            <td>${r.deposit}</td>
+            <td>${r.contract_date}</td>
+          </tr>`;
       });
-  }
-
-  /* =====================
-     건물 유형 파이차트
-  ===================== */
-  function loadBuildingType() {
-    const district = districtSelect.value;
-    const dong = dongSelect.value;
-
-    fetch(`/api/stats/building-type?district=${encodeURIComponent(district)}&dong=${encodeURIComponent(dong)}`)
-      .then(res => res.json())
-      .then(data => drawBuildingTypeChart(data.labels, data.values));
-  }
-
-  function drawBuildingTypeChart(labels, values) {
-    const ctx = document.getElementById("buildingTypeChart").getContext("2d");
-
-    if (buildingChart) buildingChart.destroy();
-
-    buildingChart = new Chart(ctx, {
-      type: "pie",
-      data: {
-        labels: labels,
-        datasets: [{ data: values }]
-      }
     });
-  }
+}
 </script>
 
 </body>
