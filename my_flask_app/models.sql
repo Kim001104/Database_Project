@@ -11,4 +11,8 @@ CREATE TABLE IF NOT EXISTS real_estate (
     floor INTEGER,
     built_year INTEGER,
     contract_date TEXT
+
+    CHECK (area IS NULL OR area > 0),   --무결성 제약 조건
+    CHECK (rent IS NULL OR rent >= 0),  --무결성 제약 조건  
+    CHECK (deposit IS NULL OR deposit >= 0) --무결성 제약 조건
 );
