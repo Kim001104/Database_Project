@@ -125,11 +125,13 @@ def contracts():
     dong = request.args.get("dong")
     building_type = request.args.get("building_type")
 
+    min_area = request.args.get("min_area")  # ㎡
+    max_area = request.args.get("max_area")  # ㎡
+
     if not district or not dong or not building_type:
         return jsonify([])
 
-    db = get_db()
-    rows = db.execute("""
+    query = """
         SELECT
             area,
             rent,
@@ -139,9 +141,21 @@ def contracts():
         WHERE district = ?
           AND dong = ?
           AND building_type = ?
-        ORDER BY rent ASC
-        LIMIT 500
-    """, (district, dong, building_type)).fetchall()
+    """
+    params = [district, dong, building_type]
+
+    if min_area:
+        query += " AND area >= ?"
+        params.append(float(min_area))
+
+    if max_area:
+        query += " AND area <= ?"
+        params.append(float(max_area))
+
+    query += " ORDER BY rent ASC LIMIT 500"
+
+    db = get_db()
+    rows = db.execute(query, params).fetchall()
 
     return jsonify([
         {
@@ -152,6 +166,8 @@ def contracts():
         }
         for r in rows
     ])
+
+
 
 
 
